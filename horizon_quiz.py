@@ -1,3 +1,4 @@
+# bridge rebuild
 #!/usr/bin/env python3
 """Horizon quiz bot — delivers the express-test result + offer in Telegram.
 
