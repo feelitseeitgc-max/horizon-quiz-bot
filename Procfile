@@ -1,1 +1,1 @@
-worker: python bot.py
+worker: python horizon_quiz.py
