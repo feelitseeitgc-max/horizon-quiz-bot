@@ -327,9 +327,11 @@ class _LeadHandler(BaseHTTPRequestHandler):
 
 
 def _serve_webhook() -> None:
-    port = int(os.environ.get("PORT", 8000))
-    HTTPServer(("0.0.0.0", port), _LeadHandler).serve_forever()
+    # Default 8080 matches the Railway domain's target port; Railway's PORT
+    # env var overrides it when present.
+    port = int(os.environ.get("PORT", 8080))
     log.info("tilda bridge listening on :%s", port)
+    HTTPServer(("0.0.0.0", port), _LeadHandler).serve_forever()
 
 
 def main() -> None:
