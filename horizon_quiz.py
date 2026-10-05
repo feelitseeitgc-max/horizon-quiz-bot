@@ -17,7 +17,10 @@ Env vars:
 import logging
 import os
 import sqlite3
+import threading
 from datetime import datetime, timedelta, timezone
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -233,7 +236,107 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Tilda -> GetCourse lead bridge.
+# Tilda's webhook recipient posts the hidden form (Name/Email) here;
+# we create/refresh the contact in GetCourse via its API.
+# Runs in a background thread inside the same worker — no extra service.
+#
+# Env:
+#   GETCOURSE_API_KEY  secret key from GetCourse -> profile -> API (required)
+#   GETCOURSE_HOST     e.g. academy.arghorizon.com (default)
+#   GETCOURSE_GROUP    optional GetCourse group name for quiz leads
+# ---------------------------------------------------------------------------
+GC_API_KEY = os.environ.get("GETCOURSE_API_KEY", "")
+GC_HOST = os.environ.get("GETCOURSE_HOST", "academy.arghorizon.com")
+GC_GROUP = os.environ.get("GETCOURSE_GROUP", "")
+
+
+class _LeadHandler(BaseHTTPRequestHandler):
+    def _send(self, code: int, obj: dict) -> None:
+        import json as _json
+
+        body = _json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _fields(self) -> dict:
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        raw = self.rfile.read(length).decode("utf-8", "replace") if length else ""
+        ctype = (self.headers.get("Content-Type") or "").lower()
+        if "application/json" in ctype and raw.strip().startswith("{"):
+            try:
+                import json as _json
+
+                data = _json.loads(raw)
+                return {k: v for k, v in data.items() if isinstance(v, str)}
+            except Exception:
+                pass
+        return {k: v[0] for k, v in parse_qs(raw).items() if v}
+
+    def do_GET(self) -> None:  # noqa: N802
+        if urlparse(self.path).path == "/health":
+            self._send(200, {"ok": True, "getcourse": bool(GC_API_KEY)})
+        else:
+            self._send(404, {"ok": False})
+
+    def do_POST(self) -> None:  # noqa: N802
+        if urlparse(self.path).path != "/tilda-lead":
+            self._send(404, {"ok": False})
+            return
+        fields = self._fields()
+        email = (fields.get("Email") or fields.get("email") or "").strip()
+        name = (fields.get("Name") or fields.get("name") or "").strip()
+        log.info("lead received: name=%r has_email=%s", name, bool(email))
+        if email and GC_API_KEY:
+            self._push_to_getcourse(email, name)
+        # Always 200 so Tilda never retry-spams on transient errors.
+        self._send(200, {"ok": True})
+
+    def _push_to_getcourse(self, email: str, name: str) -> None:
+        import base64
+        import json as _json
+        import urllib.request
+
+        user = {"email": email, "first_name": name}
+        if GC_GROUP:
+            user["group_name"] = [GC_GROUP]
+        params = base64.b64encode(
+            _json.dumps(
+                {"user": user, "system": {"refresh_if_exists": 1}},
+                ensure_ascii=False,
+            ).encode("utf-8")
+        ).decode("ascii")
+        try:
+            req = urllib.request.Request(
+                f"https://{GC_HOST}/pl/api/users",
+                data=urlencode(
+                    {"action": "add", "key": GC_API_KEY, "params": params}
+                ).encode(),
+            )
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                log.info("getcourse -> HTTP %s", resp.status)
+        except Exception:
+            log.exception("getcourse request failed")
+
+    def log_message(self, *args) -> None:
+        pass  # keep worker logs clean
+
+
+def _serve_webhook() -> None:
+    port = int(os.environ.get("PORT", 8000))
+    HTTPServer(("0.0.0.0", port), _LeadHandler).serve_forever()
+    log.info("tilda bridge listening on :%s", port)
+
+
 def main() -> None:
+    # Webhook listener for the Tilda form -> GetCourse bridge.
+    threading.Thread(target=_serve_webhook, daemon=True).start()
+    log.info("tilda bridge thread started")
+
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(
