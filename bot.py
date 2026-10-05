@@ -7,9 +7,9 @@ matching level message + the Horizon offer.
 
 Env vars:
   BOT_TOKEN    Telegram Bot API token from @BotFather (required)
-  PRICE        Offer price label, e.g. "$49" (default "$55")
+  PRICE        Offer price label, e.g. "$49" (default "$49")
   PAYMENT_URL  Checkout link (default https://www.arghorizon.com)
-  TEST_URL     Express test page (default https://www.arghorizon.com/expresstest.html)
+  TEST_URL     Express test page (default https://www.arghorizon.com/expresstest)
 """
 import logging
 import os
@@ -29,10 +29,10 @@ logging.basicConfig(
 log = logging.getLogger("horizon-quiz-bot")
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-PRICE = os.environ.get("PRICE", "$55")
+PRICE = os.environ.get("PRICE", "$49")
 PAYMENT_URL = os.environ.get("PAYMENT_URL", "https://www.arghorizon.com")
 TEST_URL = os.environ.get(
-    "TEST_URL", "https://www.arghorizon.com/expresstest.html"
+    "TEST_URL", "https://www.arghorizon.com/expresstest"
 )
 # Invite link to the Horizon Telegram community group (optional).
 COMMUNITY_URL = os.environ.get("COMMUNITY_URL", "")
@@ -66,17 +66,19 @@ LEVELS = {
 
 def offer_text() -> str:
     return (
-        "🔥 HORIZON — заговори на американском английском\n\n"
-        "• 3 прямых эфира в неделю с Аргом — сленг, лексика, твои вопросы\n"
-        "• Speaking club каждую неделю — говоришь ты\n"
-        "• Уроки в записи под твой уровень\n"
-        "• Сообщество — практика каждый день\n\n"
-        f"{PRICE}/мес — дешевле одного индивидуального урока."
+        "🔥 HORIZON — заговори на американском английском\n"
+        "• 3 эфира в неделю со мной: сленг, грамматика, твои вопросы — без зубрёжки\n"
+        "• Speaking club: говоришь ты, не я\n"
+        "• 314 уроков в записи под твой уровень + PDF, конспекты и тесты\n"
+        "• Замер уровня до и после — увидишь прогресс\n"
+        "• Сообщество, где тебя не засмеют за ошибки\n"
+        "🕗 Эфиры пн–чт в 20:15 МСК, записи всегда доступны\n"
+        f"{PRICE}/4 недели — дешевле одного индивидуального урока."
     )
 
 
 def offer_keyboard() -> InlineKeyboardMarkup:
-    rows = [[InlineKeyboardButton(f"Занять место — {PRICE}/мес", url=PAYMENT_URL)]]
+    rows = [[InlineKeyboardButton(f"Занять место — {PRICE}/4 недели", url=PAYMENT_URL)]]
     if COMMUNITY_URL:
         rows.append(
             [InlineKeyboardButton("Заглянуть в сообщество Horizon", url=COMMUNITY_URL)]
