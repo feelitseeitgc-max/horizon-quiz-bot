@@ -127,7 +127,7 @@ def offer_text() -> str:
         "🔥 HORIZON — заговори на американском английском\n"
         "• 3 эфира в неделю со мной: сленг, грамматика, твои вопросы — без зубрёжки\n"
         "• Speaking club: говоришь ты, не я\n"
-        "• 314 уроков в записи под твой уровень + PDF, конспекты и тесты\n"
+        "• Уроки в записи под твой уровень + PDF, конспекты и тесты\n"
         "• Замер уровня до и после — увидишь прогресс\n"
         "• Сообщество, где тебя не засмеют за ошибки\n"
         "🕗 Эфиры пн–чт в 20:15 МСК, записи всегда доступны\n"
@@ -152,25 +152,24 @@ def offer_keyboard(level: str = "") -> InlineKeyboardMarkup:
 
 def reminder_text(level: str) -> str:
     return (
-        f"Привет! 2 дня назад ты узнал свой уровень — {level}.\n\n"
-        "Места в Horizon ещё открыты. Если готов заговорить "
-        "на американском английском — заходи 🙂"
+        f"2 дня назад ты узнал свой уровень — {level}.\n\n"
+        "Честный вопрос: что изменится через год, если всё останется как сейчас? "
+        "Duolingo не считается 🙂\n\n"
+        f"Horizon — {PRICE}/4 недели. Меньше, чем один индивидуальный урок."
     )
 
 
 def trial_text() -> str:
     return (
-        "Неделя в Horizon — бесплатно 🙂\n\n"
-        "Полный доступ: эфиры, speaking club, 314 уроков и сообщество. "
-        "Без карты — просто попробуй."
+        "Прошла неделя с твоего теста. Вопрос всё тот же: что изменится через год, "
+        "если всё останется как сейчас?\n\n"
+        f"Horizon — {PRICE}/4 недели. Эфиры, speaking club, уроки под твой уровень, сообщество."
     )
 
 
 def trial_keyboard() -> InlineKeyboardMarkup:
     rows = []
-    if TRIAL_URL:
-        rows.append([InlineKeyboardButton("Попробовать неделю бесплатно", url=TRIAL_URL)])
-    rows.append([InlineKeyboardButton(f"Сразу занять место — {PRICE}/4 недели", url=PAYMENT_URL)])
+    rows.append([InlineKeyboardButton(f"Занять место — {PRICE}/4 недели", url=PAYMENT_URL)])
     if COMMUNITY_URL:
         rows.append(
             [InlineKeyboardButton("Заглянуть в сообщество Horizon", url=COMMUNITY_URL)]
